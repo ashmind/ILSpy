@@ -708,7 +708,7 @@ namespace ICSharpCode.Decompiler.Ast
 					{
 						PointerType ptrType = byteCode.InferredType as PointerType;
 						TypeReference type;
-						if (ptrType != null) {
+						if (ptrType != null && !ptrType.ElementType.IsVoid()) {
 							type = ptrType.ElementType;
 						} else {
 							type = typeSystem.Byte;

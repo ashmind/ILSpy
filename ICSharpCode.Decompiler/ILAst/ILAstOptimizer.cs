@@ -683,7 +683,10 @@ namespace ICSharpCode.Decompiler.ILAst
 							ILExpression expr2 = expr;
 							DivideOrMultiplyBySize(ref expr2, ref arg0, type.ElementType, true);
 							// expr shouldn't change
-							if (expr2 != expr)
+							// but if the change is a cast, this is fine -- just means we need to change
+							// the inferred type. we can't change it here as it will be reset later, so we
+							// just ignore it.
+							if (expr2 != expr && (expr2.Code != ILCode.Castclass || expr2.Arguments[0] != expr))
 								throw new InvalidOperationException();
 							args[0] = arg0;
 						}
