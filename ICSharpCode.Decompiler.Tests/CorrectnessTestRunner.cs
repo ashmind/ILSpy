@@ -163,6 +163,12 @@ namespace ICSharpCode.Decompiler.Tests
 		}
 
 		[Test]
+		public void OperatorOverloading([ValueSource("defaultOptions")] CompilerOptions options)
+		{
+			RunCS(options: options);
+		}
+
+		[Test]
 		public void ExpressionTrees([ValueSource("defaultOptions")] CompilerOptions options)
 		{
 			RunCS(options: options);
