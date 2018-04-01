@@ -21,7 +21,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Mono.Cecil;
-using Mono.Cecil.Cil;
 
 namespace ICSharpCode.Decompiler.ILAst
 {
@@ -34,8 +33,8 @@ namespace ICSharpCode.Decompiler.ILAst
 		{
 			if (!(type.DeclaringType != null && type.IsCompilerGenerated()))
 				return false;
-			foreach (TypeReference i in type.Interfaces) {
-				if (i.Namespace == "System.Runtime.CompilerServices" && i.Name == "IAsyncStateMachine")
+			foreach (var i in type.Interfaces) {
+				if (i.InterfaceType.Namespace == "System.Runtime.CompilerServices" && i.InterfaceType.Name == "IAsyncStateMachine")
 					return true;
 			}
 			return false;
@@ -395,9 +394,9 @@ namespace ICSharpCode.Decompiler.ILAst
 			newTopLevelBody.Insert(0, MakeGoTo(labelStateRangeMapping, initialState));
 			newTopLevelBody.Add(setResultAndExitLabel);
 			if (methodType == AsyncMethodType.TaskOfT) {
-				newTopLevelBody.Add(new ILExpression(ILCode.Ret, null, resultExpr));
+				newTopLevelBody.Add(new ILExpression(ILCode.Ret, resultExpr));
 			} else {
-				newTopLevelBody.Add(new ILExpression(ILCode.Ret, null));
+				newTopLevelBody.Add(new ILExpression(ILCode.Ret));
 			}
 		}
 		
@@ -438,7 +437,7 @@ namespace ICSharpCode.Decompiler.ILAst
 					int targetStateID;
 					HandleAwait(newBody, out awaiterVar, out awaiterField, out targetStateID);
 					MarkAsGeneratedVariable(awaiterVar);
-					newBody.Add(new ILExpression(ILCode.Await, null, new ILExpression(ILCode.Ldloca, awaiterVar)));
+					newBody.Add(new ILExpression(ILCode.Await, new ILExpression(ILCode.Ldloca, awaiterVar)));
 					newBody.Add(MakeGoTo(mapping, targetStateID));
 				} else if (tryCatchBlock != null) {
 					ILTryCatchBlock newTryCatchBlock = new ILTryCatchBlock();
@@ -680,9 +679,9 @@ namespace ICSharpCode.Decompiler.ILAst
 			pos++;
 			if (isResultAssignment) {
 				Debug.Assert(body[pos] == resultAssignment);
-				resultAssignment.Arguments[0] = new ILExpression(ILCode.Await, null, awaitedExpr);
+				resultAssignment.Arguments[0] = new ILExpression(ILCode.Await, awaitedExpr);
 			} else {
-				body[pos] = new ILExpression(ILCode.Await, null, awaitedExpr);
+				body[pos] = new ILExpression(ILCode.Await, awaitedExpr);
 			}
 			
 			// if the awaiter variable is cleared out in the next instruction, remove that instruction

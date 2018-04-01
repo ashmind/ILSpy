@@ -252,7 +252,7 @@ namespace ICSharpCode.Decompiler.ILAst
 				if (ldloc == 0) {
 					// it was an ldloca instruction, so we need to use the pseudo-opcode 'addressof' so that the types
 					// comes out correctly
-					parent.Arguments[pos] = new ILExpression(ILCode.AddressOf, null, inlinedExpression);
+					parent.Arguments[pos] = new ILExpression(ILCode.AddressOf, inlinedExpression);
 				} else {
 					parent.Arguments[pos] = inlinedExpression;
 				}

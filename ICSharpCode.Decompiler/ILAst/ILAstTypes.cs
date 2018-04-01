@@ -306,34 +306,80 @@ namespace ICSharpCode.Decompiler.ILAst
 		public ILExpressionPrefix[] Prefixes { get; set; }
 		// Mapping to the original instructions (useful for debugging)
 		public List<ILRange> ILRanges { get; set; }
-		
+
 		public TypeReference ExpectedType { get; set; }
 		public TypeReference InferredType { get; set; }
-		
+
 		public static readonly object AnyOperand = new object();
-		
-		public ILExpression(ILCode code, object operand, List<ILExpression> args)
+
+		public ILExpression(ILCode code)
 		{
-			if (operand is ILExpression)
-				throw new ArgumentException("operand");
-			
+			this.Code = code;
+			this.Arguments = new List<ILExpression>();
+			this.ILRanges = new List<ILRange>(1);
+		}
+
+		public ILExpression(ILCode code, ILVariable operand) : this(code)
+		{
+			this.Operand = operand;
+		}
+
+		public ILExpression(ILCode code, ILVariable operand, ILExpression argument) : this(code, operand)
+		{
+			this.Arguments.Add(argument);
+		}
+
+		public ILExpression(ILCode code, ILLabel operand) : this(code)
+		{
+			this.Operand = operand;
+		}
+
+		public ILExpression(ILCode code, ILLabel operand, ILExpression argument) : this(code, operand)
+		{
+			this.Arguments.Add(argument);
+		}
+
+		public ILExpression(ILCode code, MemberReference operand) : this(code)
+		{
+			this.Operand = operand;
+		}
+
+		public ILExpression(ILCode code, MemberReference operand, IList<ILExpression> arguments)
+		{
 			this.Code = code;
 			this.Operand = operand;
-			this.Arguments = new List<ILExpression>(args);
-			this.ILRanges  = new List<ILRange>(1);
+			this.Arguments = new List<ILExpression>(arguments);
+			this.ILRanges = new List<ILRange>(1);
 		}
-		
-		public ILExpression(ILCode code, object operand, params ILExpression[] args)
+
+		public ILExpression(ILCode code, int operand) : this(code)
 		{
-			if (operand is ILExpression)
-				throw new ArgumentException("operand");
-			
-			this.Code = code;
 			this.Operand = operand;
-			this.Arguments = new List<ILExpression>(args);
-			this.ILRanges  = new List<ILRange>(1);
 		}
-		
+
+		public ILExpression(ILCode code, int operand, ILExpression argument) : this(code, operand)
+		{
+			this.Arguments.Add(argument);
+		}
+
+		public ILExpression(ILCode code, ILExpression argument) : this(code)
+		{
+			this.Arguments.Add(argument);
+		}
+
+		public ILExpression(ILCode code, ILExpression argument1, ILExpression argument2) : this(code)
+		{
+			this.Arguments.Add(argument1);
+			this.Arguments.Add(argument2);
+		}
+
+		public ILExpression(ILCode code, IList<ILExpression> arguments)
+		{
+			this.Code = code;
+			this.Arguments = new List<ILExpression>(arguments);
+			this.ILRanges = new List<ILRange>(1);
+		}
+
 		public void AddPrefix(ILExpressionPrefix prefix)
 		{
 			ILExpressionPrefix[] arr = this.Prefixes;
@@ -447,7 +493,7 @@ namespace ICSharpCode.Decompiler.ILAst
 					output.Write("::");
 					output.WriteReference(field.Name, field);
 				} else {
-					DisassemblerHelpers.WriteOperand(output, Operand);
+					DisassemblerHelpers.WriteOperand(output, Operand, symbols: null);
 				}
 				first = false;
 			}

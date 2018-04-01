@@ -195,7 +195,7 @@ namespace ICSharpCode.Decompiler.ILAst
 
 			ILCode code = LoadCodeFor(elementType);
 			for (int i = 0; i < output.Length; i++)
-				output[i] = new ILExpression(code, decoder(initialValue, i * elementSize));
+				output[i] = new ILExpression(code) { Operand = decoder(initialValue, i * elementSize) };
 
 			return true;
 		}
@@ -362,7 +362,7 @@ namespace ICSharpCode.Decompiler.ILAst
 				return false;
 			TypeDefinition td = tr.Resolve();
 			while (td != null) {
-				if (td.Interfaces.Any(intf => intf.Name == "IEnumerable" && intf.Namespace == "System.Collections"))
+				if (td.Interfaces.Any(intf => intf.InterfaceType.Name == "IEnumerable" && intf.InterfaceType.Namespace == "System.Collections"))
 					return true;
 				td = td.BaseType != null ? td.BaseType.Resolve() : null;
 			}
@@ -414,7 +414,7 @@ namespace ICSharpCode.Decompiler.ILAst
 			// Take care not to modify any existing ILExpressions in here.
 			// We just construct new ones around the old ones, any modifications must wait until the whole
 			// object/collection initializer was analyzed.
-			ILExpression objectInitializer = new ILExpression(isCollection ? ILCode.InitCollection : ILCode.InitObject, null, newObjExpr);
+			ILExpression objectInitializer = new ILExpression(isCollection ? ILCode.InitCollection : ILCode.InitObject, newObjExpr);
 			List<ILExpression> initializerStack = new List<ILExpression>();
 			initializerStack.Add(objectInitializer);
 			while (++pos < body.Count) {
@@ -483,7 +483,7 @@ namespace ICSharpCode.Decompiler.ILAst
 
 				ILExpression nestedInitializer = new ILExpression(
 					IsCollectionType(returnType) ? ILCode.InitCollection : ILCode.InitObject,
-					null, g);
+					g);
 				// add new initializer to its parent:
 				ILExpression parentInitializer = initializerStack[initializerStack.Count - 1];
 				if (parentInitializer.Code == ILCode.InitCollection) {
@@ -535,10 +535,10 @@ namespace ICSharpCode.Decompiler.ILAst
 				if (element.Code == ILCode.InitCollection || element.Code == ILCode.InitObject) {
 					// nested collection/object initializer
 					ILExpression getCollection = element.Arguments[0];
-					getCollection.Arguments[0] = new ILExpression(ILCode.InitializedObject, null);
+					getCollection.Arguments[0] = new ILExpression(ILCode.InitializedObject);
 					ChangeFirstArgumentToInitializedObject(element); // handle the collection elements
 				} else {
-					element.Arguments[0] = new ILExpression(ILCode.InitializedObject, null);
+					element.Arguments[0] = new ILExpression(ILCode.InitializedObject);
 				}
 			}
 		}

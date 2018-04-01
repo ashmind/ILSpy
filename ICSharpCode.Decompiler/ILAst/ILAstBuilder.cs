@@ -461,7 +461,7 @@ namespace ICSharpCode.Decompiler.ILAst
 			}
 			
 			// Split and convert the normal local variables
-			ConvertLocalVariables(body);
+			ConvertLocalVariables(body, methodDef.DebugInformation);
 			
 			// Convert branch targets to labels
 			foreach(ByteCode byteCode in body) {
@@ -523,7 +523,7 @@ namespace ICSharpCode.Decompiler.ILAst
 		/// If possible, separates local variables into several independent variables.
 		/// It should undo any compilers merging.
 		/// </summary>
-		void ConvertLocalVariables(List<ByteCode> body)
+		void ConvertLocalVariables(List<ByteCode> body, MethodDebugInformation symbols)
 		{
 			foreach(VariableDefinition varDef in methodDef.Body.Variables) {
 				
@@ -539,7 +539,7 @@ namespace ICSharpCode.Decompiler.ILAst
 				if (!optimize || varDef.IsPinned || uses.Any(b => b.VariablesBefore[varDef.Index].UnknownDefinition || (b.Code == ILCode.Ldloca && !IsDeterministicLdloca(b)))) {				
 					newVars = new List<VariableInfo>(1) { new VariableInfo() {
 						Variable = new ILVariable() {
-							Name = string.IsNullOrEmpty(varDef.Name) ? "var_" + varDef.Index : varDef.Name,
+							Name = symbols != null && symbols.TryGetName(varDef, out var name) ? name : "var_" + varDef.Index,
 							Type = varDef.IsPinned ? ((PinnedType)varDef.VariableType).ElementType : varDef.VariableType,
 							OriginalVariable = varDef
 						},
@@ -550,7 +550,7 @@ namespace ICSharpCode.Decompiler.ILAst
 					// Create a new variable for each definition
 					newVars = defs.Select(def => new VariableInfo() {
 						Variable = new ILVariable() {
-							Name = (string.IsNullOrEmpty(varDef.Name) ? "var_" + varDef.Index : varDef.Name) + "_" + def.Offset.ToString("X2"),
+							Name = (symbols != null && symbols.TryGetName(varDef, out var name) ? name : "var_" + varDef.Index) + "_" + def.Offset.ToString("X2"),
 							Type = varDef.VariableType,
 							OriginalVariable = varDef
 					    },
@@ -749,8 +749,8 @@ namespace ICSharpCode.Decompiler.ILAst
 					// Unreachable code
 					continue;
 				}
-				
-				ILExpression expr = new ILExpression(byteCode.Code, byteCode.Operand);
+
+				var expr = new ILExpression(byteCode.Code) { Operand = byteCode.Operand };
 				expr.ILRanges.Add(ilRange);
 				if (byteCode.Prefixes != null && byteCode.Prefixes.Length > 0) {
 					ILExpressionPrefix[] prefixes = new ILExpressionPrefix[byteCode.Prefixes.Length];

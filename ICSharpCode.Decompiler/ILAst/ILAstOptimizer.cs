@@ -363,8 +363,8 @@ namespace ICSharpCode.Decompiler.ILAst
 						default:
 							continue;
 					}
-					var newExpr = new ILExpression(op, null, expr.Arguments);
-					block.Body[i] = new ILExpression(ILCode.Brtrue, expr.Operand, newExpr);
+					var newExpr = new ILExpression(op, expr.Arguments);
+					block.Body[i] = new ILExpression(ILCode.Brtrue, newExpr) { Operand = expr.Operand };
 					newExpr.ILRanges = expr.ILRanges;
 				}
 			}
@@ -420,7 +420,7 @@ namespace ICSharpCode.Decompiler.ILAst
 							}
 							expr.Code = ILCode.CallGetter;
 							if (parentExpr != null) {
-								parentExpr.Arguments[posInParent] = new ILExpression(ILCode.AddressOf, null, expr);
+								parentExpr.Arguments[posInParent] = new ILExpression(ILCode.AddressOf, expr);
 							}
 							break;
 					}
@@ -537,17 +537,17 @@ namespace ICSharpCode.Decompiler.ILAst
 								ILVariable locVar;
 								object constValue;
 								if (retArgs.Count == 0) {
-									block.Body[i] = new ILExpression(ILCode.Ret, null);
+									block.Body[i] = new ILExpression(ILCode.Ret);
 								} else if (retArgs.Single().Match(ILCode.Ldloc, out locVar)) {
-									block.Body[i] = new ILExpression(ILCode.Ret, null, new ILExpression(ILCode.Ldloc, locVar));
+									block.Body[i] = new ILExpression(ILCode.Ret, new ILExpression(ILCode.Ldloc, locVar));
 								} else if (retArgs.Single().Match(ILCode.Ldc_I4, out constValue)) {
-									block.Body[i] = new ILExpression(ILCode.Ret, null, new ILExpression(ILCode.Ldc_I4, constValue));
+									block.Body[i] = new ILExpression(ILCode.Ret, new ILExpression(ILCode.Ldc_I4, (int)constValue));
 								}
 							}
 						} else {
 							if (method.Body.Count > 0 && method.Body.Last() == targetLabel) {
 								// It exits the main method - so it is same as return;
-								block.Body[i] = new ILExpression(ILCode.Ret, null);
+								block.Body[i] = new ILExpression(ILCode.Ret);
 							}
 						}
 					}
@@ -637,7 +637,7 @@ namespace ICSharpCode.Decompiler.ILAst
 							ILBlock tmp = cond.TrueBlock;
 							cond.TrueBlock = cond.FalseBlock;
 							cond.FalseBlock = tmp;
-							cond.Condition = new ILExpression(ILCode.LogicNot, null, cond.Condition);
+							cond.Condition = new ILExpression(ILCode.LogicNot, cond.Condition);
 						}
 					}
 				}
@@ -780,7 +780,7 @@ namespace ICSharpCode.Decompiler.ILAst
 
 		static ILExpression Cast(ILExpression expr, TypeReference type)
 		{
-			return new ILExpression(ILCode.Castclass, type, expr)
+			return new ILExpression(ILCode.Castclass, type, new[] { expr })
 			{
 				InferredType = type,
 				ExpectedType = type
@@ -844,7 +844,7 @@ namespace ICSharpCode.Decompiler.ILAst
 			}
 
 			if (!(sizeOfExpression.Code == ILCode.Ldc_I4 && (int)sizeOfExpression.Operand == 1))
-				adjustmentExpr = new ILExpression(divide ? ILCode.Div_Un : ILCode.Mul, null, adjustmentExpr, sizeOfExpression);
+				adjustmentExpr = new ILExpression(divide ? ILCode.Div_Un : ILCode.Mul, adjustmentExpr, sizeOfExpression);
 		}
 		
 		public static void ReplaceVariables(ILNode node, Func<ILVariable, ILVariable> variableMapping)

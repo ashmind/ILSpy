@@ -98,19 +98,19 @@ namespace ICSharpCode.Decompiler.ILAst
 					if (leftBoolVal != 0) {
 						newExpr = condExpr;
 					} else {
-						newExpr = new ILExpression(ILCode.LogicNot, null, condExpr) { InferredType = typeSystem.Boolean };
+						newExpr = new ILExpression(ILCode.LogicNot, condExpr) { InferredType = typeSystem.Boolean };
 					}
 				} else if ((retTypeIsBoolean || TypeAnalysis.IsBoolean(falseExpr.InferredType)) && trueExpr.Match(ILCode.Ldc_I4, out leftBoolVal) && (leftBoolVal == 0 || leftBoolVal == 1)) {
 					// It can be expressed as logical expression
 					if (leftBoolVal != 0) {
 						newExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicOr, condExpr, falseExpr);
 					} else {
-						newExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicAnd, new ILExpression(ILCode.LogicNot, null, condExpr), falseExpr);
+						newExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicAnd, new ILExpression(ILCode.LogicNot, condExpr), falseExpr);
 					}
 				} else if ((retTypeIsBoolean || TypeAnalysis.IsBoolean(trueExpr.InferredType)) && falseExpr.Match(ILCode.Ldc_I4, out rightBoolVal) && (rightBoolVal == 0 || rightBoolVal == 1)) {
 					// It can be expressed as logical expression
 					if (rightBoolVal != 0) {
-						newExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicOr, new ILExpression(ILCode.LogicNot, null, condExpr), trueExpr);
+						newExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicOr, new ILExpression(ILCode.LogicNot, condExpr), trueExpr);
 					} else {
 						newExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicAnd, condExpr, trueExpr);
 					}
@@ -124,7 +124,7 @@ namespace ICSharpCode.Decompiler.ILAst
 						return false;
 					
 					// Create ternary expression
-					newExpr = new ILExpression(ILCode.TernaryOp, null, condExpr, trueExpr, falseExpr);
+					newExpr = new ILExpression(ILCode.TernaryOp, new[] { condExpr, trueExpr, falseExpr });
 				}
 				
 				head.Body.RemoveTail(ILCode.Brtrue, ILCode.Br);
@@ -178,7 +178,7 @@ namespace ICSharpCode.Decompiler.ILAst
 			   )
 			{
 				head.Body.RemoveTail(ILCode.Stloc, ILCode.Brtrue, ILCode.Br);
-				head.Body.Add(new ILExpression(ILCode.Stloc, v, new ILExpression(ILCode.NullCoalescing, null, leftExpr, rightExpr)));
+				head.Body.Add(new ILExpression(ILCode.Stloc, v, new ILExpression(ILCode.NullCoalescing, leftExpr, rightExpr)));
 				head.Body.Add(new ILExpression(ILCode.Br, endBBLabel));
 				
 				body.RemoveOrThrow(labelToBasicBlock[rightBBLabel]);
@@ -216,9 +216,9 @@ namespace ICSharpCode.Decompiler.ILAst
 						// Create short cicuit branch
 						ILExpression logicExpr;
 						if (otherLablel == nextFalseLabel) {
-							logicExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicAnd, negate ? new ILExpression(ILCode.LogicNot, null, condExpr) : condExpr, nextCondExpr);
+							logicExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicAnd, negate ? new ILExpression(ILCode.LogicNot, condExpr) : condExpr, nextCondExpr);
 						} else {
-							logicExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicOr, negate ? condExpr : new ILExpression(ILCode.LogicNot, null, condExpr), nextCondExpr);
+							logicExpr = MakeLeftAssociativeShortCircuit(ILCode.LogicOr, negate ? condExpr : new ILExpression(ILCode.LogicNot, condExpr), nextCondExpr);
 						}
 						head.Body.RemoveTail(ILCode.Brtrue, ILCode.Br);
 						head.Body.Add(new ILExpression(ILCode.Brtrue, nextTrueLablel, logicExpr));
@@ -343,10 +343,10 @@ namespace ICSharpCode.Decompiler.ILAst
 				ILExpression current = right;
 				while(current.Arguments[0].Match(code))
 					current = current.Arguments[0];
-				current.Arguments[0] = new ILExpression(code, null, left, current.Arguments[0]) { InferredType = typeSystem.Boolean };
+				current.Arguments[0] = new ILExpression(code, left, current.Arguments[0]) { InferredType = typeSystem.Boolean };
 				return right;
 			} else {
-				return new ILExpression(code, null, left, right) { InferredType = typeSystem.Boolean };
+				return new ILExpression(code, left, right) { InferredType = typeSystem.Boolean };
 			}
 		}
 		

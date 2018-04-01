@@ -157,7 +157,7 @@ namespace ICSharpCode.Decompiler.ILAst
 							if (loopContents.Contains(falseTarget) || falseTarget == node)
 							{
 								// Negate the condition
-								condExpr = new ILExpression(ILCode.LogicNot, null, condExpr);
+								condExpr = new ILExpression(ILCode.LogicNot, condExpr);
 								ILLabel tmp = trueLabel;
 								trueLabel = falseLabel;
 								falseLabel = tmp;
@@ -299,7 +299,7 @@ namespace ICSharpCode.Decompiler.ILAst
 										caseBlock.Body.Add(new ILBasicBlock() {
 											Body = {
 												new ILLabel() { Name = "SwitchBreak_" + (nextLabelIndex++) },
-												new ILExpression(ILCode.LoopOrSwitchBreak, null)
+												new ILExpression(ILCode.LoopOrSwitchBreak)
 											}
 										});
 									}
@@ -321,7 +321,7 @@ namespace ICSharpCode.Decompiler.ILAst
 									caseBlock.Body.Add(new ILBasicBlock() {
 										Body = {
 											new ILLabel() { Name = "SwitchBreak_" + (nextLabelIndex++) },
-											new ILExpression(ILCode.LoopOrSwitchBreak, null)
+											new ILExpression(ILCode.LoopOrSwitchBreak)
 										}
 									});
 								}
@@ -338,7 +338,7 @@ namespace ICSharpCode.Decompiler.ILAst
 							ILLabel temp = trueLabel;
 							trueLabel = falseLabel;
 							falseLabel = temp;
-							condExpr = new ILExpression(ILCode.LogicNot, null, condExpr);
+							condExpr = new ILExpression(ILCode.LogicNot, condExpr);
 							
 							// Convert the brtrue to ILCondition
 							ILCondition ilCond = new ILCondition() {

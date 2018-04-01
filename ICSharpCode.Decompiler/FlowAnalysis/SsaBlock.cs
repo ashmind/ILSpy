@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Mono.Cecil.Cil;
 
 namespace ICSharpCode.Decompiler.FlowAnalysis
 {
@@ -32,7 +33,7 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 		public readonly List<SsaBlock> Predecessors = new List<SsaBlock>();
 		public readonly ControlFlowNodeType NodeType;
 		public readonly List<SsaInstruction> Instructions = new List<SsaInstruction>();
-		
+
 		/// <summary>
 		/// The block index in the control flow graph.
 		/// This correspons to the node index in ControlFlowGraph.Nodes, so it can be used to retrieve the original CFG node and look
@@ -45,7 +46,7 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 			this.NodeType = node.NodeType;
 			this.BlockIndex = node.BlockIndex;
 		}
-		
+
 		public override string ToString()
 		{
 			StringWriter writer = new StringWriter();

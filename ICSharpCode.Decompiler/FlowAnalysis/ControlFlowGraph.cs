@@ -22,6 +22,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using Mono.Cecil.Cil;
 
 using ICSharpCode.NRefactory.Utils;
 
@@ -34,7 +35,7 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 	public sealed class ControlFlowGraph
 	{
 		readonly ReadOnlyCollection<ControlFlowNode> nodes;
-		
+
 		public ControlFlowNode EntryPoint {
 			get { return nodes[0]; }
 		}
@@ -50,7 +51,7 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 		public ReadOnlyCollection<ControlFlowNode> Nodes {
 			get { return nodes; }
 		}
-		
+
 		internal ControlFlowGraph(ControlFlowNode[] nodes)
 		{
 			this.nodes = new ReadOnlyCollection<ControlFlowNode>(nodes);

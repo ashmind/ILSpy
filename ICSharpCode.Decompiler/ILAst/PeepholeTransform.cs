@@ -125,11 +125,11 @@ namespace ICSharpCode.Decompiler.ILAst
 		{
 			if (expr.Code == ILCode.Initobj) {
 				expr.Code = ILCode.Stobj;
-				expr.Arguments.Add(new ILExpression(ILCode.DefaultValue, expr.Operand));
+				expr.Arguments.Add(new ILExpression(ILCode.DefaultValue, (TypeReference)expr.Operand));
 				modified = true;
 			} else if (expr.Code == ILCode.Cpobj) {
 				expr.Code = ILCode.Stobj;
-				expr.Arguments[1] = new ILExpression(ILCode.Ldobj, expr.Operand, expr.Arguments[1]);
+				expr.Arguments[1] = new ILExpression(ILCode.Ldobj, (TypeReference)expr.Operand, new[] { expr.Arguments[1] });
 				modified = true;
 			}
 			ILExpression arg, arg2;
@@ -583,7 +583,7 @@ namespace ICSharpCode.Decompiler.ILAst
 					exprInit.Code = ILCode.Ldsflda;
 					break;
 				case ILCode.CallGetter:
-					exprInit = new ILExpression(ILCode.AddressOf, null, exprInit);
+					exprInit = new ILExpression(ILCode.AddressOf, exprInit);
 					break;
 			}
 			expr.Arguments[0] = new ILExpression(incrementCode, incrementAmount, exprInit);
@@ -677,7 +677,7 @@ namespace ICSharpCode.Decompiler.ILAst
 			if (expr.Code == ILCode.Stobj) {
 				stloc.Arguments[0] = new ILExpression(ILCode.PostIncrement, incrementAmount, initialValue.Arguments[0]);
 			} else if (expr.Code == ILCode.CallSetter || expr.Code == ILCode.CallvirtSetter) {
-				initialValue = new ILExpression(ILCode.AddressOf, null, initialValue);
+				initialValue = new ILExpression(ILCode.AddressOf, initialValue);
 				stloc.Arguments[0] = new ILExpression(ILCode.PostIncrement, incrementAmount, initialValue);
 			} else {
 				stloc.Arguments[0] = new ILExpression(ILCode.PostIncrement, incrementAmount, initialValue);

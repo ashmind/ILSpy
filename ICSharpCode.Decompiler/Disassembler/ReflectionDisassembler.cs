@@ -24,6 +24,7 @@ using System.Text;
 using System.Threading;
 using ICSharpCode.NRefactory;
 using Mono.Cecil;
+using Mono.Cecil.Cil;
 using Mono.Collections.Generic;
 
 namespace ICSharpCode.Decompiler.Disassembler
@@ -643,11 +644,11 @@ namespace ICSharpCode.Decompiler.Disassembler
 					} else if (cd.HasValue && (double.IsNaN(cd.Value) || double.IsInfinity(cd.Value))) {
 						output.Write("0x{0:x16}", BitConverter.DoubleToInt64Bits(cd.Value));
 					} else {
-						DisassemblerHelpers.WriteOperand(output, constant);
+						DisassemblerHelpers.WriteOperand(output, constant, symbols: null);
 					}
 					output.Write(')');
 				} else {
-					DisassemblerHelpers.WriteOperand(output, constant);
+					DisassemblerHelpers.WriteOperand(output, constant, symbols: null);
 				}
 			}
 		}
@@ -852,7 +853,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 						output.Write("implements ");
 					else
 						output.Write("           ");
-					type.Interfaces[index].WriteTo(output, ILNameSyntax.TypeName);
+					type.Interfaces[index].InterfaceType.WriteTo(output, ILNameSyntax.TypeName);
 				}
 				output.WriteLine();
 				output.Unindent();

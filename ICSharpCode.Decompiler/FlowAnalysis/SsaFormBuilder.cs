@@ -83,8 +83,12 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 				parameters[i + (method.HasThis ? 1 : 0)] = new SsaVariable(method.Parameters[i]);
 			
 			this.locals = new SsaVariable[method.Body.Variables.Count];
-			for (int i = 0; i < locals.Length; i++)
-				locals[i] = new SsaVariable(method.Body.Variables[i]);
+			for (int i = 0; i < locals.Length; i++) {
+				var variable = method.Body.Variables[i];
+				if (!method.DebugInformation.TryGetName(variable, out var variableName))
+					variableName = null;
+				locals[i] = new SsaVariable(variable, variableName);
+			}
 			
 			this.stackLocations = new SsaVariable[method.Body.MaxStackSize];
 			for (int i = 0; i < stackLocations.Length; i++) {

@@ -325,12 +325,11 @@ namespace ICSharpCode.Decompiler.ILAst
 					return true;
 				}
 
-				static readonly ILExpression[] EmptyArguments = new ILExpression[0];
 				public override ILExpression BuildNew(PatternMatcher pm)
 				{
 					var v = this.b ? pm.B : pm.A;
-					var e = new ILExpression(ILCode.Ldloc, v, EmptyArguments);
-					if (TypeAnalysis.IsNullableType(v.Type)) e = new ILExpression(ILCode.ValueOf, null, e);
+					var e = new ILExpression(ILCode.Ldloc, v);
+					if (TypeAnalysis.IsNullableType(v.Type)) e = new ILExpression(ILCode.ValueOf, e);
 					return e;
 				}
 			}
@@ -339,7 +338,7 @@ namespace ICSharpCode.Decompiler.ILAst
 			{
 				public static readonly Pattern False = new BooleanPattern(false), True = new BooleanPattern(true);
 
-				readonly object value;
+				readonly int value;
 				BooleanPattern(bool value)
 					: base(null)
 				{
@@ -354,7 +353,7 @@ namespace ICSharpCode.Decompiler.ILAst
 				public override ILExpression BuildNew(PatternMatcher pm)
 				{
 					// boolean constants are wrapped inside a container to disable simplyfication of equality comparisons
-					return new ILExpression(ILCode.Wrap, null, new ILExpression(ILCode.Ldc_I4, value));
+					return new ILExpression(ILCode.Wrap, new ILExpression(ILCode.Ldc_I4, value));
 				}
 			}
 

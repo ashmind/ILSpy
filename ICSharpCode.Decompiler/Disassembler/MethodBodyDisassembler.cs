@@ -66,9 +66,10 @@ namespace ICSharpCode.Decompiler.Disassembler
 				foreach (var v in method.Body.Variables) {
 					output.WriteDefinition("[" + v.Index + "] ", v);
 					v.VariableType.WriteTo(output);
-					if (!string.IsNullOrEmpty(v.Name)) {
+					var name = debugSymbols.GetVariableName(v.Index);
+					if (!string.IsNullOrEmpty(name)) {
 						output.Write(' ');
-						output.Write(DisassemblerHelpers.Escape(v.Name));
+						output.Write(DisassemblerHelpers.Escape(name));
 					}
 					if (v.Index + 1 < method.Body.Variables.Count)
 						output.Write(',');
@@ -86,7 +87,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 			} else {
 				foreach (var inst in method.Body.Instructions) {
 					var startLocation = output.Location;
-					inst.WriteTo(output);
+					inst.WriteTo(output, debugSymbols);
 					
 					if (debugSymbols != null) {
 						// add IL code mappings - used in debugger
@@ -190,7 +191,7 @@ namespace ICSharpCode.Decompiler.Disassembler
 						output.WriteLine(); // put an empty line after branches, and in front of branch targets
 					}
 					var startLocation = output.Location;
-					inst.WriteTo(output);
+					inst.WriteTo(output, debugSymbols);
 					
 					// add IL code mappings - used in debugger
 					if (debugSymbols != null) {

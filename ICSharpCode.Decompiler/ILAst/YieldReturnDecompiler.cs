@@ -178,8 +178,8 @@ namespace ICSharpCode.Decompiler.ILAst
 		{
 			if (!(type.DeclaringType != null && type.IsCompilerGenerated()))
 				return false;
-			foreach (TypeReference i in type.Interfaces) {
-				if (i.Namespace == "System.Collections" && i.Name == "IEnumerator")
+			foreach (var i in type.Interfaces) {
+				if (i.InterfaceType.Namespace == "System.Collections" && i.InterfaceType.Name == "IEnumerator")
 					return true;
 			}
 			return false;
@@ -473,7 +473,7 @@ namespace ICSharpCode.Decompiler.ILAst
 						currentState = (int)expr.Arguments[1].Operand;
 						stateChanges.Add(new SetState(newBody.Count, currentState));
 					} else if (GetFieldDefinition(expr.Operand as FieldReference) == currentField) {
-						newBody.Add(new ILExpression(ILCode.YieldReturn, null, expr.Arguments[1]));
+						newBody.Add(new ILExpression(ILCode.YieldReturn, expr.Arguments[1]));
 					} else {
 						newBody.Add(body[pos]);
 					}
@@ -484,7 +484,7 @@ namespace ICSharpCode.Decompiler.ILAst
 						throw new SymbolicAnalysisFailedException();
 					int val = (int)expr.Arguments[0].Operand;
 					if (val == 0) {
-						newBody.Add(new ILExpression(ILCode.YieldBreak, null));
+						newBody.Add(new ILExpression(ILCode.YieldBreak));
 					} else if (val == 1) {
 						newBody.Add(MakeGoTo(labels, currentState));
 					} else {
@@ -496,7 +496,7 @@ namespace ICSharpCode.Decompiler.ILAst
 					// handle direct return (e.g. in release builds)
 					int val = (int)expr.Arguments[0].Operand;
 					if (val == 0) {
-						newBody.Add(new ILExpression(ILCode.YieldBreak, null));
+						newBody.Add(new ILExpression(ILCode.YieldBreak));
 					} else if (val == 1) {
 						newBody.Add(MakeGoTo(labels, currentState));
 					} else {
@@ -512,7 +512,7 @@ namespace ICSharpCode.Decompiler.ILAst
 						ILExpression br = body.ElementAtOrDefault(++pos) as ILExpression;
 						if (br == null || !(br.Code == ILCode.Br || br.Code == ILCode.Leave) || br.Operand != returnFalseLabel)
 							throw new SymbolicAnalysisFailedException();
-						newBody.Add(new ILExpression(ILCode.YieldBreak, null));
+						newBody.Add(new ILExpression(ILCode.YieldBreak));
 					} else if (finallyMethodToStateRange.TryGetValue(method, out stateRange)) {
 						// Call to Finally-method
 						int index = stateChanges.FindIndex(ss => stateRange.Contains(ss.NewState));
@@ -538,14 +538,14 @@ namespace ICSharpCode.Decompiler.ILAst
 					newBody.Add(body[pos]);
 				}
 			}
-			newBody.Add(new ILExpression(ILCode.YieldBreak, null));
+			newBody.Add(new ILExpression(ILCode.YieldBreak));
 		}
 		
 		ILExpression MakeGoTo(ILLabel targetLabel)
 		{
 			Debug.Assert(targetLabel != null);
 			if (targetLabel == returnFalseLabel)
-				return new ILExpression(ILCode.YieldBreak, null);
+				return new ILExpression(ILCode.YieldBreak);
 			else
 				return new ILExpression(ILCode.Br, targetLabel);
 		}

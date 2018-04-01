@@ -65,10 +65,10 @@ namespace ICSharpCode.Decompiler.Ast
 				builder.context = context;
 				builder.typeSystem = methodDef.Module.TypeSystem;
 				if (Debugger.IsAttached) {
-					return builder.CreateMethodBody(parameters);
+					return builder.CreateMethodBody(parameters, methodDef.DebugInformation);
 				} else {
 					try {
-						return builder.CreateMethodBody(parameters);
+						return builder.CreateMethodBody(parameters, methodDef.DebugInformation);
 					} catch (OperationCanceledException) {
 						throw;
 					} catch (Exception ex) {
@@ -80,7 +80,7 @@ namespace ICSharpCode.Decompiler.Ast
 			}
 		}
 		
-		public BlockStatement CreateMethodBody(IEnumerable<ParameterDeclaration> parameters)
+		public BlockStatement CreateMethodBody(IEnumerable<ParameterDeclaration> parameters, MethodDebugInformation symbols)
 		{
 			if (methodDef.Body == null) {
 				return null;
@@ -111,7 +111,7 @@ namespace ICSharpCode.Decompiler.Ast
 			}
 			
 			context.CancellationToken.ThrowIfCancellationRequested();
-			Ast.BlockStatement astBlock = TransformBlock(ilMethod);
+			Ast.BlockStatement astBlock = TransformBlock(ilMethod, symbols);
 			CommentStatement.ReplaceAll(astBlock); // convert CommentStatements to Comments
 			
 			Statement insertionPoint = astBlock.Statements.FirstOrDefault();
@@ -131,24 +131,24 @@ namespace ICSharpCode.Decompiler.Ast
 			return astBlock;
 		}
 		
-		Ast.BlockStatement TransformBlock(ILBlock block)
+		Ast.BlockStatement TransformBlock(ILBlock block, MethodDebugInformation symbols)
 		{
 			Ast.BlockStatement astBlock = new BlockStatement();
 			if (block != null) {
 				foreach(ILNode node in block.GetChildren()) {
-					astBlock.Statements.AddRange(TransformNode(node));
+					astBlock.Statements.AddRange(TransformNode(node, symbols));
 				}
 			}
 			return astBlock;
 		}
 		
-		IEnumerable<Statement> TransformNode(ILNode node)
+		IEnumerable<Statement> TransformNode(ILNode node, MethodDebugInformation symbols)
 		{
 			if (node is ILLabel) {
 				yield return new Ast.LabelStatement { Label = ((ILLabel)node).Name };
 			} else if (node is ILExpression) {
 				List<ILRange> ilRanges = ILRange.OrderAndJoin(node.GetSelfAndChildrenRecursive<ILExpression>().SelectMany(e => e.ILRanges));
-				AstNode codeExpr = TransformExpression((ILExpression)node);
+				AstNode codeExpr = TransformExpression((ILExpression)node, symbols);
 				if (codeExpr != null) {
 					codeExpr = codeExpr.WithAnnotation(ilRanges);
 					if (codeExpr is Ast.Expression) {
@@ -162,17 +162,17 @@ namespace ICSharpCode.Decompiler.Ast
 			} else if (node is ILWhileLoop) {
 				ILWhileLoop ilLoop = (ILWhileLoop)node;
 				WhileStatement whileStmt = new WhileStatement() {
-					Condition = ilLoop.Condition != null ? (Expression)TransformExpression(ilLoop.Condition) : new PrimitiveExpression(true),
-					EmbeddedStatement = TransformBlock(ilLoop.BodyBlock)
+					Condition = ilLoop.Condition != null ? (Expression)TransformExpression(ilLoop.Condition, symbols) : new PrimitiveExpression(true),
+					EmbeddedStatement = TransformBlock(ilLoop.BodyBlock, symbols)
 				};
 				yield return whileStmt;
 			} else if (node is ILCondition) {
 				ILCondition conditionalNode = (ILCondition)node;
 				bool hasFalseBlock = conditionalNode.FalseBlock.EntryGoto != null || conditionalNode.FalseBlock.Body.Count > 0;
 				yield return new Ast.IfElseStatement {
-					Condition = (Expression)TransformExpression(conditionalNode.Condition),
-					TrueStatement = TransformBlock(conditionalNode.TrueBlock),
-					FalseStatement = hasFalseBlock ? TransformBlock(conditionalNode.FalseBlock) : null
+					Condition = (Expression)TransformExpression(conditionalNode.Condition, symbols),
+					TrueStatement = TransformBlock(conditionalNode.TrueBlock, symbols),
+					FalseStatement = hasFalseBlock ? TransformBlock(conditionalNode.FalseBlock, symbols) : null
 				};
 			} else if (node is ILSwitch) {
 				ILSwitch ilSwitch = (ILSwitch)node;
@@ -186,7 +186,7 @@ namespace ICSharpCode.Decompiler.Ast
 					// If switch cases contain values other then 0 and 1, force the condition to be non-boolean
 					ilSwitch.Condition.ExpectedType = typeSystem.Int32;
 				}
-				SwitchStatement switchStmt = new SwitchStatement() { Expression = (Expression)TransformExpression(ilSwitch.Condition) };
+				SwitchStatement switchStmt = new SwitchStatement() { Expression = (Expression)TransformExpression(ilSwitch.Condition, symbols) };
 				foreach (var caseBlock in ilSwitch.CaseBlocks) {
 					SwitchSection section = new SwitchSection();
 					if (caseBlock.Values != null) {
@@ -194,33 +194,33 @@ namespace ICSharpCode.Decompiler.Ast
 					} else {
 						section.CaseLabels.Add(new CaseLabel());
 					}
-					section.Statements.Add(TransformBlock(caseBlock));
+					section.Statements.Add(TransformBlock(caseBlock, symbols));
 					switchStmt.SwitchSections.Add(section);
 				}
 				yield return switchStmt;
 			} else if (node is ILTryCatchBlock) {
 				ILTryCatchBlock tryCatchNode = ((ILTryCatchBlock)node);
 				var tryCatchStmt = new Ast.TryCatchStatement();
-				tryCatchStmt.TryBlock = TransformBlock(tryCatchNode.TryBlock);
+				tryCatchStmt.TryBlock = TransformBlock(tryCatchNode.TryBlock, symbols);
 				foreach (var catchClause in tryCatchNode.CatchBlocks) {
 					if (catchClause.ExceptionVariable == null
 						&& (catchClause.ExceptionType == null || catchClause.ExceptionType.MetadataType == MetadataType.Object))
 					{
-						tryCatchStmt.CatchClauses.Add(new Ast.CatchClause { Body = TransformBlock(catchClause) });
+						tryCatchStmt.CatchClauses.Add(new Ast.CatchClause { Body = TransformBlock(catchClause, symbols) });
 					} else {
 						tryCatchStmt.CatchClauses.Add(
 							new Ast.CatchClause {
 								Type = AstBuilder.ConvertType(catchClause.ExceptionType),
 								VariableName = catchClause.ExceptionVariable == null ? null : catchClause.ExceptionVariable.Name,
-								Body = TransformBlock(catchClause)
+								Body = TransformBlock(catchClause, symbols)
 							}.WithAnnotation(catchClause.ExceptionVariable));
 					}
 				}
 				if (tryCatchNode.FinallyBlock != null)
-					tryCatchStmt.FinallyBlock = TransformBlock(tryCatchNode.FinallyBlock);
+					tryCatchStmt.FinallyBlock = TransformBlock(tryCatchNode.FinallyBlock, symbols);
 				if (tryCatchNode.FaultBlock != null) {
 					CatchClause cc = new CatchClause();
-					cc.Body = TransformBlock(tryCatchNode.FaultBlock);
+					cc.Body = TransformBlock(tryCatchNode.FaultBlock, symbols);
 					cc.Body.Add(new ThrowStatement()); // rethrow
 					tryCatchStmt.CatchClauses.Add(cc);
 				}
@@ -234,22 +234,22 @@ namespace ICSharpCode.Decompiler.Ast
 					fixedStatement.Variables.Add(
 						new VariableInitializer {
 							Name = v.Name,
-							Initializer = (Expression)TransformExpression(initializer.Arguments[0])
+							Initializer = (Expression)TransformExpression(initializer.Arguments[0], symbols)
 						}.WithAnnotation(v));
 				}
 				fixedStatement.Type = AstBuilder.ConvertType(((ILVariable)fixedNode.Initializers[0].Operand).Type);
-				fixedStatement.EmbeddedStatement = TransformBlock(fixedNode.BodyBlock);
+				fixedStatement.EmbeddedStatement = TransformBlock(fixedNode.BodyBlock, symbols);
 				yield return fixedStatement;
 			} else if (node is ILBlock) {
-				yield return TransformBlock((ILBlock)node);
+				yield return TransformBlock((ILBlock)node, symbols);
 			} else {
 				throw new Exception("Unknown node type");
 			}
 		}
 		
-		AstNode TransformExpression(ILExpression expr)
+		AstNode TransformExpression(ILExpression expr, MethodDebugInformation symbols)
 		{
-			AstNode node = TransformByteCode(expr);
+			AstNode node = TransformByteCode(expr, symbols);
 			Expression astExpr = node as Expression;
 			
 			// get IL ranges - used in debugger
@@ -270,14 +270,14 @@ namespace ICSharpCode.Decompiler.Ast
 			return result;
 		}
 		
-		AstNode TransformByteCode(ILExpression byteCode)
+		AstNode TransformByteCode(ILExpression byteCode, MethodDebugInformation symbols)
 		{
 			object operand = byteCode.Operand;
 			AstType operandAsTypeRef = AstBuilder.ConvertType(operand as Cecil.TypeReference);
 
 			List<Ast.Expression> args = new List<Expression>();
 			foreach(ILExpression arg in byteCode.Arguments) {
-				args.Add((Ast.Expression)TransformExpression(arg));
+				args.Add((Ast.Expression)TransformExpression(arg, symbols));
 			}
 			Ast.Expression arg1 = args.Count >= 1 ? args[0] : null;
 			Ast.Expression arg2 = args.Count >= 2 ? args[1] : null;
@@ -587,7 +587,7 @@ namespace ICSharpCode.Decompiler.Ast
 					#endregion
 				case ILCode.Arglist:
 					return new UndocumentedExpression { UndocumentedExpressionType = UndocumentedExpressionType.ArgListAccess };
-					case ILCode.Break:    return InlineAssembly(byteCode, args);
+					case ILCode.Break:    return InlineAssembly(byteCode, args, symbols);
 				case ILCode.Call:
 				case ILCode.CallGetter:
 				case ILCode.CallSetter:
@@ -612,19 +612,19 @@ namespace ICSharpCode.Decompiler.Ast
 						return new IdentifierExpression("ldvirtftn").Invoke(expr)
 							.WithAnnotation(new Transforms.DelegateConstruction.Annotation(true));
 					}
-					case ILCode.Calli:       return InlineAssembly(byteCode, args);
-					case ILCode.Ckfinite:    return InlineAssembly(byteCode, args);
-					case ILCode.Constrained: return InlineAssembly(byteCode, args);
-					case ILCode.Cpblk:       return InlineAssembly(byteCode, args);
-					case ILCode.Cpobj:       return InlineAssembly(byteCode, args);
+					case ILCode.Calli:       return InlineAssembly(byteCode, args, symbols);
+					case ILCode.Ckfinite:    return InlineAssembly(byteCode, args, symbols);
+					case ILCode.Constrained: return InlineAssembly(byteCode, args, symbols);
+					case ILCode.Cpblk:       return InlineAssembly(byteCode, args, symbols);
+					case ILCode.Cpobj:       return InlineAssembly(byteCode, args, symbols);
 					case ILCode.Dup:         return arg1;
-					case ILCode.Endfilter:   return InlineAssembly(byteCode, args);
+					case ILCode.Endfilter:   return InlineAssembly(byteCode, args, symbols);
 					case ILCode.Endfinally:  return null;
-					case ILCode.Initblk:     return InlineAssembly(byteCode, args);
-					case ILCode.Initobj:      return InlineAssembly(byteCode, args);
+					case ILCode.Initblk:     return InlineAssembly(byteCode, args, symbols);
+					case ILCode.Initobj:      return InlineAssembly(byteCode, args, symbols);
 				case ILCode.DefaultValue:
 					return MakeDefaultValue((TypeReference)operand);
-					case ILCode.Jmp: return InlineAssembly(byteCode, args);
+					case ILCode.Jmp: return InlineAssembly(byteCode, args, symbols);
 				case ILCode.Ldc_I4:
 					return AstBuilder.MakePrimitive((int)operand, byteCode.InferredType);
 				case ILCode.Ldc_I8:
@@ -699,7 +699,7 @@ namespace ICSharpCode.Decompiler.Ast
 						} else {
 							loadName = "ldtoken";
 							handleName = "Handle";
-							referencedEntity = new IdentifierExpression(FormatByteCodeOperand(byteCode.Operand));
+							referencedEntity = new IdentifierExpression(FormatByteCodeOperand(byteCode.Operand, symbols));
 						}
 						return new IdentifierExpression(loadName).Invoke(referencedEntity).WithAnnotation(new LdTokenAnnotation()).Member(handleName);
 					}
@@ -727,7 +727,7 @@ namespace ICSharpCode.Decompiler.Ast
 								Arguments = { dir.Expression.Detach() }
 							};
 						} else {
-							return InlineAssembly(byteCode, args);
+							return InlineAssembly(byteCode, args, symbols);
 						}
 					}
 				case ILCode.Refanytype:
@@ -779,10 +779,10 @@ namespace ICSharpCode.Decompiler.Ast
 						oce.Arguments.AddRange(args);
 						return oce.WithAnnotation(operand);
 					}
-					case ILCode.No: return InlineAssembly(byteCode, args);
+					case ILCode.No: return InlineAssembly(byteCode, args, symbols);
 					case ILCode.Nop: return null;
 					case ILCode.Pop: return arg1;
-					case ILCode.Readonly: return InlineAssembly(byteCode, args);
+					case ILCode.Readonly: return InlineAssembly(byteCode, args, symbols);
 				case ILCode.Ret:
 					if (methodDef.ReturnType.FullName != "System.Void") {
 						return new Ast.ReturnStatement { Expression = arg1 };
@@ -797,11 +797,11 @@ namespace ICSharpCode.Decompiler.Ast
 							localVariablesToDefine.Add(locVar);
 						return new Ast.AssignmentExpression(new Ast.IdentifierExpression(locVar.Name).WithAnnotation(locVar), arg1);
 					}
-					case ILCode.Switch: return InlineAssembly(byteCode, args);
-					case ILCode.Tail: return InlineAssembly(byteCode, args);
+					case ILCode.Switch: return InlineAssembly(byteCode, args, symbols);
+					case ILCode.Tail: return InlineAssembly(byteCode, args, symbols);
 					case ILCode.Throw: return new Ast.ThrowStatement { Expression = arg1 };
-					case ILCode.Unaligned: return InlineAssembly(byteCode, args);
-					case ILCode.Volatile: return InlineAssembly(byteCode, args);
+					case ILCode.Unaligned: return InlineAssembly(byteCode, args, symbols);
+					case ILCode.Volatile: return InlineAssembly(byteCode, args, symbols);
 				case ILCode.YieldBreak:
 					return new Ast.YieldBreakStatement();
 				case ILCode.YieldReturn:
@@ -1110,19 +1110,19 @@ namespace ICSharpCode.Decompiler.Ast
 			#endif
 		}
 		
-		static Expression InlineAssembly(ILExpression byteCode, List<Ast.Expression> args)
+		static Expression InlineAssembly(ILExpression byteCode, List<Ast.Expression> args, MethodDebugInformation symbols)
 		{
 			#if DEBUG
 			unhandledOpcodes.AddOrUpdate(byteCode.Code, c => 1, (c, n) => n+1);
 			#endif
 			// Output the operand of the unknown IL code as well
 			if (byteCode.Operand != null) {
-				args.Insert(0, new IdentifierExpression(FormatByteCodeOperand(byteCode.Operand)));
+				args.Insert(0, new IdentifierExpression(FormatByteCodeOperand(byteCode.Operand, symbols)));
 			}
 			return new IdentifierExpression(byteCode.Code.GetName()).Invoke(args);
 		}
 		
-		static string FormatByteCodeOperand(object operand)
+		static string FormatByteCodeOperand(object operand, MethodDebugInformation symbols)
 		{
 			if (operand == null) {
 				return string.Empty;
@@ -1132,8 +1132,10 @@ namespace ICSharpCode.Decompiler.Ast
 				return ((MethodReference)operand).Name + "()";
 			} else if (operand is Cecil.TypeReference) {
 				return ((Cecil.TypeReference)operand).FullName;
-			} else if (operand is VariableDefinition) {
-				return ((VariableDefinition)operand).Name;
+			} else if (operand is VariableDefinition v) {
+				if (symbols != null && symbols.TryGetName(v, out var name))
+					return name;
+				return v.ToString();
 			} else if (operand is ParameterDefinition) {
 				return ((ParameterDefinition)operand).Name;
 			} else if (operand is FieldReference) {

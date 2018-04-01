@@ -40,6 +40,16 @@ namespace ICSharpCode.Decompiler
 			this.LocalVariables = new List<ILVariable>();
 			this.SequencePoints = new List<SequencePoint>();
 		}
+
+		public string GetVariableName(int index)
+		{
+			foreach (var variable in LocalVariables)
+			{
+				if (variable.OriginalVariable.Index == index)
+					return variable.Name;
+			}
+			return null;
+		}
 	}
 	
 	public class SequencePoint

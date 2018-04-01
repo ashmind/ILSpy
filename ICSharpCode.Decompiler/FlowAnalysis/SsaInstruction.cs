@@ -80,7 +80,7 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 	{
 		public readonly SsaBlock ParentBlock;
 		public readonly SpecialOpCode SpecialOpCode;
-		
+
 		/// <summary>
 		/// The original IL instruction.
 		/// May be null for "invented" instructions (SpecialOpCode != None).
@@ -125,7 +125,7 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 				return Target != null && Operands.Length == 1 && Instruction != null && OpCodeInfo.Get(Instruction.OpCode).IsMoveInstruction;
 			}
 		}
-		
+
 		public void ReplaceVariableInOperands(SsaVariable oldVar, SsaVariable newVar)
 		{
 			for (int i = 0; i < this.Operands.Length; i++) {
@@ -144,7 +144,7 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 		public void WriteTo(TextWriter writer)
 		{
 			foreach (Instruction prefix in this.Prefixes) {
-				Disassembler.DisassemblerHelpers.WriteTo(prefix, new PlainTextOutput(writer));
+				DisassemblerHelpers.WriteTo(prefix, new PlainTextOutput(writer), symbols: null);
 				writer.WriteLine();
 			}
 			if (Instruction != null && Instruction.Offset >= 0) {
@@ -167,7 +167,7 @@ namespace ICSharpCode.Decompiler.FlowAnalysis
 					writer.Write(Instruction.OpCode.Name);
 					if(null != Instruction.Operand) {
 						writer.Write(' ');
-						Disassembler.DisassemblerHelpers.WriteOperand(new PlainTextOutput(writer), Instruction.Operand);
+						DisassemblerHelpers.WriteOperand(new PlainTextOutput(writer), Instruction.Operand, symbols: null);
 						writer.Write(' ');
 					}
 				}
